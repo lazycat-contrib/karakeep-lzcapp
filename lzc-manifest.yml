@@ -1,0 +1,81 @@
+application:
+  subdomain: karakeep
+  multi_instance: false
+  upstreams:
+    - location: /package-licenses/
+      backend: file:///lzcapp/pkg/content/licenses/
+    - location: /
+      backend: http://web:3000/
+
+services:
+  meilisearch:
+    image: docker.1ms.run/getmeili/meilisearch:v1.55.0
+    environment:
+      - |-
+        MEILI_MASTER_KEY={{ stable_secret "karakeep_meili_key" | replace "\r" "" | replace "\n" "" }}
+      - MEILI_NO_ANALYTICS=true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:7700/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    binds:
+      - /lzcapp/var/meili:/meili_data
+
+  # Headless Chrome used to render pages when saving a bookmark. Without it
+  # only bare HTML is stored, so the reader view and screenshots break.
+  chrome:
+    image: ghcr.1ms.run/karakeep-app/karakeep-chrome:release
+    command:
+      - --disable-gpu
+      - --disable-dev-shm-usage
+      - --hide-scrollbars
+      - --disable-blink-features=AutomationControlled
+      - --window-size=1440,900
+
+  web:
+    # upstream: ghcr.io/karakeep-app/karakeep:0.34.1
+    image: ghcr.1ms.run/karakeep-app/karakeep:0.34.1
+    depends_on:
+      - meilisearch
+      - chrome
+    environment:
+      - DATA_DIR=/data
+      - MEILI_ADDR=http://meilisearch:7700
+      - |-
+        MEILI_MASTER_KEY={{ stable_secret "karakeep_meili_key" | replace "\r" "" | replace "\n" "" }}
+      - BROWSER_WEB_URL=http://chrome:9222
+      # Absolute URLs for login callbacks; must be the public https domain.
+      - |-
+        NEXTAUTH_URL=https://{{ .S.AppDomain }}
+      - |-
+        NEXTAUTH_SECRET={{ stable_secret "karakeep_nextauth_secret" | replace "\r" "" | replace "\n" "" }}
+      - TZ=Asia/Shanghai
+    binds:
+      - /lzcapp/var/data:/data
+
+usage: |
+  Karakeep 是全能书签工具：网页、笔记、图片都能存，自动抓取正文和标签，可全文搜索。
+
+  使用方法：
+  1. 打开应用，**注册第一个账号**（首个注册用户即为管理员），密码自己设。
+  2. 在首页粘贴网址即可保存书签；后台会用无头浏览器抓取正文，
+     之后打开就是干净的阅读视图，不必担心原页面失效。
+  3. 也能直接写笔记、上传图片。保存后可以打标签、加收藏夹。
+  4. 顶部搜索框能按标题、正文、标签全文检索。
+
+  数据与安全：
+  - 书签、正文和图片在 /lzcapp/var/data，搜索索引在 /lzcapp/var/meili，
+    卸载应用会一并删除，请定期备份。
+  - 账号由你首次注册时创建，不存在内置弱口令。
+  - 登录密钥与搜索服务密钥由平台稳定密钥生成，每个部署不同。
+  - 应用经懒猫入口鉴权访问；已配置外部访问地址，否则登录回调会失败。
+
+  说明：
+  - 三个容器：Karakeep + 无头 Chrome（抓取网页）+ Meilisearch（全文检索）。
+    Chrome 容器内存占用较高，建议设备有 2GB 以上可用内存。
+  - 未配置 AI 模型，因此自动打标签和 AI 摘要功能不可用；手动打标签与全文搜索正常。
+  - 未做真机验证：注册、保存书签、抓取正文、搜索以及重启后持久化均未在设备上实测。

@@ -1,0 +1,18 @@
+package: community.lazycat.app.karakeep
+name: Karakeep
+version: 0.0.0
+description: "Bookmark everything: save links, notes and images, then search them with AI-assisted tagging."
+min_os_version: "1.5.0"
+homepage: https://karakeep.app/
+author: Karakeep
+license: AGPL-3.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Karakeep
+    description: "全能书签：网页、笔记、图片都能存，自动抓取正文和标签，可全文搜索。"
+  en:
+    name: Karakeep
+    description: "Bookmark everything: save links, notes and images, then search them with AI-assisted tagging."
