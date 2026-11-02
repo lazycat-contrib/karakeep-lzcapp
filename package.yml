@@ -1,6 +1,6 @@
 package: community.lazycat.app.karakeep
 name: Karakeep
-version: 0.0.0
+version: 0.34.1
 description: "Bookmark everything: save links, notes and images, then search them with AI-assisted tagging."
 min_os_version: "1.5.0"
 homepage: https://karakeep.app/
